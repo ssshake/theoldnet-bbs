@@ -99,8 +99,10 @@ public class BBServer {
     }
 
     private static List<Class<? extends PetsciiThread>> filterPetsciiThread(String packageName) {
+        // Reflections 0.10+ rejects empty package param; scan our BBS packages by default.
+        final String pkg = defaultIfBlank(packageName, "eu.sblendorio.bbs");
         List<Class<? extends PetsciiThread>> result = new LinkedList<>();
-        for (Class<? extends PetsciiThread> elem: new LinkedList<>(new Reflections(defaultString(packageName)).getSubTypesOf(PetsciiThread.class)))
+        for (Class<? extends PetsciiThread> elem: new LinkedList<>(new Reflections(pkg).getSubTypesOf(PetsciiThread.class)))
             if (!elem.isAnnotationPresent(Hidden.class)) result.add(elem);
         Collections.sort(result, new Comparator<Class<? extends PetsciiThread>>() {
             public int compare(Class<? extends PetsciiThread> o1, Class<? extends PetsciiThread> o2) { return o1.getSimpleName().compareTo(o2.getSimpleName()); }

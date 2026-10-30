@@ -208,11 +208,17 @@ public abstract class PetsciiThread extends Thread {
         return httpGet(url, null);
     }
 
+    private static final String DEFAULT_HTTP_UA = "Mozilla/5.0 (compatible; TheOldNetBBS/1.0; +http://theoldnet.com)";
+
     public static String httpGet(String url, String userAgent) throws IOException {
         final URL object=new URL(url);
         HttpURLConnection conn = (HttpURLConnection) object.openConnection();
-        conn.setRequestProperty("User-Agent", defaultString(userAgent));
-        conn.setDoOutput(true);
+        conn.setInstanceFollowRedirects(false);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(45000);
+        // Empty UA gets blocked by many WordPress / CDN fronts; do not setDoOutput on GET.
+        conn.setRequestProperty("User-Agent", defaultIfBlank(userAgent, DEFAULT_HTTP_UA));
+        conn.setRequestProperty("Accept", "application/json, text/plain, */*");
         conn.setDoInput(true);
         conn.setRequestMethod("GET");
 
@@ -220,6 +226,11 @@ public abstract class PetsciiThread extends Thread {
         int responseCode = conn.getResponseCode();
         if (responseCode >= 301 && responseCode <= 399) {
             final String newLocation = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (isBlank(newLocation)) {
+                System.err.println("Redirect without Location from " + url);
+                return null;
+            }
             return httpGet(newLocation, userAgent);
         } else if (responseCode >= 200 && responseCode <= 299) {
             sb = new StringBuilder();
@@ -230,7 +241,7 @@ public abstract class PetsciiThread extends Thread {
             conn.disconnect();
             return sb.toString();
         } else {
-            System.err.println(conn.getResponseMessage());
+            System.err.println("HTTP " + responseCode + " " + conn.getResponseMessage() + " for " + url);
         }
         conn.disconnect();
         return null;

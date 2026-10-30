@@ -160,9 +160,21 @@ public class WordpressProxy extends PetsciiThread {
     }
 
     protected Map<Integer, Post> getPosts(int page, int perPage) throws Exception {
-        if (page < 1 || perPage < 1) return null;
+        if (page < 1 || perPage < 1) return emptyMap();
         Map<Integer, Post> result = new LinkedHashMap<>();
-        JSONArray posts = (JSONArray) httpGetJson(getApi() + "posts?context=view&page="+page+"&per_page="+perPage);
+        final String apiUrl = getApi() + "posts?context=view&page="+page+"&per_page="+perPage;
+        Object raw;
+        try {
+            raw = httpGetJson(apiUrl);
+        } catch (Exception e) {
+            log("WORDPRESS fetch failed: " + apiUrl + " — " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return emptyMap();
+        }
+        if (!(raw instanceof JSONArray)) {
+            log("WORDPRESS empty/non-array response from " + apiUrl + " (got " + (raw == null ? "null" : raw.getClass().getSimpleName()) + ")");
+            return emptyMap();
+        }
+        JSONArray posts = (JSONArray) raw;
         for (int i=0; i<posts.size(); ++i) {
             Post post = new Post();
             JSONObject postJ = (JSONObject) posts.get(i);
@@ -184,6 +196,14 @@ public class WordpressProxy extends PetsciiThread {
             waitOn();
             posts = getPosts(currentPage, pageSize);
             waitOff();
+        }
+        if (isEmpty(posts)) {
+            write(RED);
+            println("Could not load posts.");
+            println("Site down, moved, or blocking.");
+            write(GREY3);
+            newline();
+            return;
         }
         for (Map.Entry<Integer, Post> entry: posts.entrySet()) {
             int i = entry.getKey();

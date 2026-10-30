@@ -39,7 +39,7 @@ public class MenuTheOldNet extends PetsciiThread {
         try {
             File maxmindDb = new File(MAXMIND_DB);
             maxmindReader = new Reader(maxmindDb);
-            maxmindResponse = maxmindReader.get(socket.getInetAddress());
+            maxmindResponse = maxmindReader.get(socket.getInetAddress(), JsonNode.class);
             maxmindReader.close();
 
             geoData = new GeoData(

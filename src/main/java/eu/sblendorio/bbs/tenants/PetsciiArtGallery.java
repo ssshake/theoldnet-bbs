@@ -25,7 +25,7 @@ public class PetsciiArtGallery extends PetsciiThread {
         List<Path> result = new ArrayList<>();
         URL jar = getClass().getProtectionDomain().getCodeSource().getLocation();
         Path jarFile = Paths.get(jar.toURI());
-        FileSystem fs = FileSystems.newFileSystem(jarFile, null);
+        FileSystem fs = FileSystems.newFileSystem(jarFile, (ClassLoader) null);
         DirectoryStream<Path> directoryStream = Files.newDirectoryStream(fs.getPath(path));
         for (Path p : directoryStream) result.add(p);
         Collections.sort(result, new Comparator<Path>() {
@@ -89,7 +89,8 @@ public class PetsciiArtGallery extends PetsciiThread {
         int i = 0;
         while (i < size) {
             write(CLR, RETURN, CLR, UPPERCASE, REVOFF);
-            String filename = drawings.get(i).toString().substring(1);
+            // JAR zip FS may yield "/petscii-..." or "petscii-..." depending on JDK; only strip a leading slash.
+            String filename = drawings.get(i).toString().replaceFirst("^/+", "");
             log("PETSCII ("+i+") FILENAME=" + filename);
             writeRawFile(filename);
             if (statusLine) {

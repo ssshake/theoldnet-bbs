@@ -33,7 +33,16 @@ import org.jsoup.select.Elements;
 
 public class TheOldNetBrowserV3 extends PetsciiThread {
 
-    public static final String URL_TEMPLATE = "http://theoldnet.com/get?url=";
+    /**
+     * Proxy base for /get. Override with env THEOLDNET_GET_BASE (e.g. http://nodejs-theoldnet:3004/get?url=
+     * inside Docker so we do not rely on hairpin NAT to the public hostname).
+     */
+    public static final String URL_TEMPLATE = defaultIfBlank(
+            System.getenv("THEOLDNET_GET_BASE"),
+            "http://theoldnet.com/get?url=");
+
+    /** Short/vintage-ish UA so The Old Net proxies HTML instead of redirecting modern clients to Wayback. */
+    private static final String FETCH_USER_AGENT = "Mozilla/4.0 (compatible; C64)";
 
     protected int __currentPage = 1;
     protected int __pageSize = 10;
@@ -129,10 +138,24 @@ public class TheOldNetBrowserV3 extends PetsciiThread {
         loading();
         clearBrowserWindow();
         Document webpage = getWebpage(url);
+        if (webpage == null) {
+            write(RED);
+            gotoXY(0, 3);
+            println("Could not load page.");
+            println("Press any key.");
+            write(GREY3);
+            flush();
+            resetInput();
+            readKey();
+            return;
+        }
         displayPage(webpage, url);
     }
 
     protected void displayPage(Document webpage, String url) throws Exception {
+        if (webpage == null) {
+            return;
+        }
         __currentPage = 1; //reset this globally, not sure if required
 
         Pager pager = new Pager(true, 1, 0);
@@ -273,6 +296,9 @@ public class TheOldNetBrowserV3 extends PetsciiThread {
     }
 
     String formattedWebpage(Document webpage){
+        if (webpage == null) {
+            return EMPTY;
+        }
         return webpage
             .toString()
             .replaceAll("<img.[^>]*>", "<br>[IMAGE] ")
@@ -461,11 +487,16 @@ public class TheOldNetBrowserV3 extends PetsciiThread {
 
     public static Document getWebpage(String url) throws Exception {
         Document doc = null;
-        try{    
-            doc = Jsoup.connect(url).get();
-        } 
-        catch (Exception ex){     
-            System.out.println("Couldn't connect with the website."); 
+        try {
+            doc = Jsoup.connect(url)
+                    .userAgent(FETCH_USER_AGENT)
+                    .timeout(30000)
+                    .followRedirects(true)
+                    .ignoreHttpErrors(false)
+                    .get();
+        } catch (Exception ex) {
+            System.out.println("Couldn't connect with the website: " + url + " — " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            ex.printStackTrace(System.out);
         }
         return doc;
     }
