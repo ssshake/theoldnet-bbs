@@ -1,6 +1,8 @@
 *.swp
 nohup.out
-target/
+# Ignore Maven output except the fat JAR used by petsciibbs.dockerfile / prod deploys
+target/*
+!target/petscii-bbs-1.0-SNAPSHOT.jar
 .idea
 .DS_Store
 *.iml
